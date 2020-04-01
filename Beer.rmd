@@ -1,0 +1,93 @@
+---
+title: "TidyTuesday--Beer"
+author: "Benjamin Gramza"
+date: "3/30/2020"
+output: html_document
+---
+# Get the Data
+```{r}
+brewing_materials <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-03-31/brewing_materials.csv')
+beer_taxed <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-03-31/beer_taxed.csv')
+brewer_size <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-03-31/brewer_size.csv')
+beer_states <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-03-31/beer_states.csv')
+```
+Load in required libraries
+```{r}
+library(tidyverse)
+library(gganimate)
+library(zoo)
+```
+Filter Unnecessary rows out of data frame
+```{r filtering}
+df <- brewing_materials %>% 
+  filter(!type  %in% c('Total Non-Grain products','Total Grain products')) %>%            
+  select(data_type,year,month,type,month_current)
+df$Date <- as.yearmon(paste(df$year, df$month), "%Y %m")
+df$month_pct = 0
+for (i in 1:length(unique(df$Date))){
+  for(j in 1:length(unique(df$type))) {
+    df$month_pct[((df$type==unique(df$type)[j])&(df$Date==unique(df$Date)[i]))] <- df$month_current[((df$type==unique(df$type)[j])&(df$Date==unique(df$Date)[i]))] / df$month_current[((df$type==unique(df$type)[10])&(df$Date==unique(df$Date)[i]))]
+  }
+}
+df$month_pct = df$month_pct*100
+```
+Set Theme
+```{r Create Theme}
+BensTheme <- theme_bw() + 
+  # Dark Theme
+  theme(plot.background = element_rect(fill = "black")) + 
+  # Change plot title color 
+  theme(plot.title = element_text(color = "goldenrod"))+
+  # Change the colors of plot panel background to lightblue
+  # and the color of grid lines to white
+  theme(
+  panel.background = element_rect(fill = "white",
+                                colour = "goldenrod",
+                                size = 0.5, linetype = "solid"),
+  panel.grid.major = element_line(size = 0.5, linetype = 'solid',
+                                colour = "grey80"), 
+  panel.grid.minor = element_line(size = 0.25, linetype = 'solid',
+                                colour = "grey90"),
+  panel.border = element_rect(colour = "goldenrod",fill=NA,size = 2),
+  text = element_text(family="sans",colour = "goldenrod",face="bold"),
+  axis.text = element_text(size = rel(.8), face="bold", colour = "white"),
+  axis.text.x = element_blank(),
+  
+  legend.background = element_rect(colour = "white",fill="black"),
+  legend.title = element_text(colour="white"),
+  legend.key = element_rect(fill = "black", colour = "black"),
+  legend.key.size = unit(1, "lines"), 
+  legend.position = "right", 
+  legend.direction = NULL,
+  legend.justification = "center", 
+  )
+```
+```{r}
+#tidyplot <- ggplot(data=tbi_ER,aes(x=year,y=pct_per))+
+#  geom_path(aes(col= injury_mechanism),size=1,lineend="square",linejoin="round")+
+#  geom_point(aes(col=injury_mechanism),size=2)+
+# ggtitle("Emergency Room Visit Rate for Brain Injuries")+
+#  labs(subtitle = "Grouped by Brain Injury Type from 2006-2014")+
+#  ylab("ER Visits per 100 People")+
+#  xlab("Year")+BensTheme+labs(col = "Injury Type")+
+#   annotate("text", x = Inf, y = -Inf, label = "GramzaStats",
+#            hjust=1.1, vjust=-1.1, col="grey80", cex=6,
+#            fontface = "bold", alpha = 0.8)
+```
+Create Base Data Viz
+```{r data visualization}
+df2 <- df %>% filter(df$type != "Total Used")
+viz <- ggplot(data=df2,aes(x=reorder(type,-month_pct),y=month_pct)) +
+  geom_bar(stat="identity",aes(fill=type))+
+  BensTheme +
+  ylab("Percentage of Total Material")+
+  xlab("Brewing Material") + 
+  # GGanimate
+  transition_states(Date)+
+  ggtitle("Brewing Materials Used (in %) by Type: {closest_state}")+
+  ease_aes('linear')
+viz_ani <- animate(viz, nframes = 240)
+magick::image_write(viz_ani, path="Beer.gif")
+```
+
+
