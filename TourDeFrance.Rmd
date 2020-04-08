@@ -1,0 +1,31 @@
+---
+title: "TourDeFrance"
+author: "Benjamin Gramza"
+date: "4/6/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(geofacet)
+library(tidyverse)
+library(rworldmap)
+library(tmaptools)
+```
+
+
+```{r Read in Data}
+# Get the Data
+tdf_winners <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-04-07/tdf_winners.csv')
+```
+
+```{r}
+df <- tdf_winners %>% select(nationality) %>% group_by(nationality) %>%
+  summarize(count = n())
+df$nationality <- str_trim(df$nationality)
+
+mapDevice('x11')
+spdf <- joinCountryData2Map(df, joinCode="NAME", nameJoinColumn="nationality")
+mapCountryData(spdf, nameColumnToPlot="count", catMethod="fixedWidth",mapTitle = "Tour De France Winners by Country", missingCountryCol = "white",oceanCol="lightblue1",colourPalette="heat")
+
+```
+
